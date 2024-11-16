@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "nodemon ./server/server.js",
+    "start": "nodemon ./bin/server.js",
     "dev": "nodemon index.js",
     "vercel-build": "prisma generate && prisma migrate deploy",
     "prisma": "prisma"
