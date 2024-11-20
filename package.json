@@ -5,7 +5,6 @@
     "vercel-build": "prisma generate && prisma migrate deploy",
     "prisma": "prisma"
   },
-  "type": "module",
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@vercel/postgres": "^0.10.0",
