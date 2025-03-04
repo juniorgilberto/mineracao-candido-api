@@ -48,7 +48,7 @@ model Usuario {
   nome        String
   tipo        String
   telefone    String?
-  email       String    @unique
+  usuario       String    @unique
   senha       String
 }
 
