@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "scripts": {
     "start": "nodemon ./bin/server.js",
     "dev": "nodemon index.js",
