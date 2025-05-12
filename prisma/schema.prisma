@@ -31,8 +31,8 @@ model Usuario {
   nome     String
   tipo     String
   telefone String?
-  email    String  @unique
   senha    String
+  email    String  @unique
 }
 
 model Pedido {
@@ -43,6 +43,7 @@ model Pedido {
   viagens   Int
   status    String
   veiculo   String?
+  metragem  Float
   cliente   Cliente  @relation(fields: [clienteId], references: [id])
   produto   Produto  @relation(fields: [produtoId], references: [id])
 }
