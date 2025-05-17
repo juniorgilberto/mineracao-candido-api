@@ -7,13 +7,37 @@ class pedidoController {
     async getAllPedidos(req, res) {
 
         // GET // Buscar todos os pedidos.
-        const pedidos = await prisma.pedido.findMany({
+        try {
+            const { data } = req.query;
+
+            const where = {};
+
+            if (data) {
+            const inicioDoDia = new Date(`${data}T00:00:00.000Z`);
+            const fimDoDia = new Date(`${data}T23:59:59.999Z`);
+
+            where.data = {
+                gte: inicioDoDia,
+                lte: fimDoDia,
+            };
+            }
+
+            const pedidos = await prisma.pedido.findMany({
+            where,
             include: {
                 cliente: true,
                 produto: true,
             },
-        });
-        return res.json(pedidos);
+            orderBy: {
+                data: 'asc',
+            }
+            });
+
+            res.json(pedidos);
+        } catch (error) {
+            console.error("Erro ao buscar pedidos:", error);
+            res.status(500).json({ erro: "Erro ao buscar pedidos." });
+        }
     }
 
     async getPedido(req, res) {
