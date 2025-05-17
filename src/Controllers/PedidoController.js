@@ -7,7 +7,12 @@ class pedidoController {
     async getAllPedidos(req, res) {
 
         // GET // Buscar todos os pedidos.
-        const pedidos = await prisma.pedido.findMany();
+        const pedidos = await prisma.pedido.findMany({
+            include: {
+                cliente: true,
+                produto: true,
+            },
+        });
         return res.json(pedidos);
     }
 
