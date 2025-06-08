@@ -29,28 +29,36 @@ class pedidoController {
                 };
             }
 
+            const { periodo, dataInicio, dataFim } = req.query;
+
+            if (periodo === 'intervalo' && dataInicio && dataFim) {
+                where.data = {
+                    gte: new Date(`${dataInicio}T00:00:00.000Z`),
+                    lte: new Date(`${dataFim}T23:59:59.999Z`),
+                };
+            }
+
+
             // Filtro por clienteId
             if (clienteId) {
                 where.clienteId = Number(clienteId);
             }
 
             // Filtro por produtoId
-            if (produtoId) {
-                where.produtoId = Number(produtoId);
+            if (req.query.produtoId) {
+                where.produtoId = Number(req.query.produtoId);
             }
 
-            // Filtro por status (texto exato ou parcial)
-            if (status) {
+            if (req.query.status) {
                 where.status = {
-                    contains: status,
+                    contains: req.query.status,
                     mode: 'insensitive',
                 };
             }
 
-            // Filtro por veículo (texto exato ou parcial)
-            if (veiculo) {
+            if (req.query.veiculo) {
                 where.veiculo = {
-                    contains: veiculo,
+                    contains: req.query.veiculo,
                     mode: 'insensitive',
                 };
             }
