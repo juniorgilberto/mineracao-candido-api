@@ -5,32 +5,73 @@ class pedidoController {
     //CRUD DO PEDIDO = CREATE, READ, UPDATE AND DELETE =  CRIANDO, BUSCANDO, ALTERANDO E DELETANDO MEU(S) PEDIDO(S).
 
     async getAllPedidos(req, res) {
-
-        // GET // Buscar todos os pedidos.
         try {
-            const { data } = req.query;
+            const {
+                data,
+                clienteId,
+                produtoId,
+                status,
+                veiculo,
+                metragem,
+                viagens
+            } = req.query;
 
             const where = {};
 
+            // Filtro por data específica
             if (data) {
-            const inicioDoDia = new Date(`${data}T00:00:00.000Z`);
-            const fimDoDia = new Date(`${data}T23:59:59.999Z`);
+                const inicioDoDia = new Date(`${data}T00:00:00.000Z`);
+                const fimDoDia = new Date(`${data}T23:59:59.999Z`);
 
-            where.data = {
-                gte: inicioDoDia,
-                lte: fimDoDia,
-            };
+                where.data = {
+                    gte: inicioDoDia,
+                    lte: fimDoDia,
+                };
+            }
+
+            // Filtro por clienteId
+            if (clienteId) {
+                where.clienteId = Number(clienteId);
+            }
+
+            // Filtro por produtoId
+            if (produtoId) {
+                where.produtoId = Number(produtoId);
+            }
+
+            // Filtro por status (texto exato ou parcial)
+            if (status) {
+                where.status = {
+                    contains: status,
+                    mode: 'insensitive',
+                };
+            }
+
+            // Filtro por veículo (texto exato ou parcial)
+            if (veiculo) {
+                where.veiculo = {
+                    contains: veiculo,
+                    mode: 'insensitive',
+                };
+            }
+
+            if (metragem) {
+            where.metragem = parseFloat(metragem);
+            }
+
+            if (viagens) {
+                where.viagens = parseInt(viagens);
             }
 
             const pedidos = await prisma.pedido.findMany({
-            where,
-            include: {
-                cliente: true,
-                produto: true,
-            },
-            orderBy: {
-                data: 'asc',
-            }
+                where,
+                include: {
+                    cliente: true,
+                    produto: true,
+                },
+                orderBy: {
+                    data: 'asc',
+                },
             });
 
             res.json(pedidos);
@@ -39,6 +80,7 @@ class pedidoController {
             res.status(500).json({ erro: "Erro ao buscar pedidos." });
         }
     }
+
 
     async getPedido(req, res) {
 
