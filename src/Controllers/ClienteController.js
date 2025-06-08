@@ -4,11 +4,89 @@ class clienteController {
 
     //CRUD DO CLIENTE = CREATE, READ, UPDATE AND DELETE =  CRIANDO, BUSCANDO, ALTERANDO E DELETANDO MEU(S) CLIENTE(S).
 
-    async getAllClients(req, res) {
+    async getAllPedidos(req, res) {
+        try {
+            const {
+                data,
+                clienteId,
+                produtoId,
+                status,
+                veiculo,
+                metragemMin,
+                metragemMax,
+                viagensMin,
+                viagensMax
+            } = req.query;
 
-        // GET // Buscar todos os clientes.
-        const clientes = await prisma.cliente.findMany();
-        return res.json(clientes);
+            const where = {};
+
+            // Filtro por data específica
+            if (data) {
+                const inicioDoDia = new Date(`${data}T00:00:00.000Z`);
+                const fimDoDia = new Date(`${data}T23:59:59.999Z`);
+
+                where.data = {
+                    gte: inicioDoDia,
+                    lte: fimDoDia,
+                };
+            }
+
+            // Filtro por clienteId
+            if (clienteId) {
+                where.clienteId = Number(clienteId);
+            }
+
+            // Filtro por produtoId
+            if (produtoId) {
+                where.produtoId = Number(produtoId);
+            }
+
+            // Filtro por status (texto exato ou parcial)
+            if (status) {
+                where.status = {
+                    contains: status,
+                    mode: 'insensitive',
+                };
+            }
+
+            // Filtro por veículo (texto exato ou parcial)
+            if (veiculo) {
+                where.veiculo = {
+                    contains: veiculo,
+                    mode: 'insensitive',
+                };
+            }
+
+            // Filtro por metragem (mínima e/ou máxima)
+            if (metragemMin || metragemMax) {
+                where.metragem = {};
+                if (metragemMin) where.metragem.gte = parseFloat(metragemMin);
+                if (metragemMax) where.metragem.lte = parseFloat(metragemMax);
+            }
+
+            // Filtro por número de viagens (mínimo e/ou máximo)
+            if (viagensMin || viagensMax) {
+                where.viagens = {};
+                if (viagensMin) where.viagens.gte = parseInt(viagensMin);
+                if (viagensMax) where.viagens.lte = parseInt(viagensMax);
+            }
+
+            const pedidos = await prisma.pedido.findMany({
+                where,
+                include: {
+                    cliente: true,
+                    produto: true,
+                },
+                orderBy: {
+                    data: 'asc',
+                },
+            });
+
+            res.json(pedidos);
+        } catch (error) {
+            console.error("Erro ao buscar pedidos:", error);
+            res.status(500).json({ erro: "Erro ao buscar pedidos." });
+        }
     }
 
     async getClient(req, res) {
