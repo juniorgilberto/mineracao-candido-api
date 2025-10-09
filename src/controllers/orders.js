@@ -1,5 +1,5 @@
 // controllers/orders.js
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
@@ -177,4 +177,4 @@ async function deleteOrder(req, res) {
   } catch (err) { console.error(err); res.status(500).json({ error: 'server' }); }
 }
 
-module.exports = { listOrders, getOrder, createOrder, updateOrder, deleteOrder };
+export default { listOrders, getOrder, createOrder, updateOrder, deleteOrder };

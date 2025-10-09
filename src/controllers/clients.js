@@ -1,5 +1,5 @@
 // controllers/clients.js
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
@@ -107,6 +107,4 @@ async function deleteClient(req, res) {
   }
 }
 
-module.exports = {
-  listClients, getClient, createClient, updateClient, deleteClient
-};
+export default { listClients, getClient, createClient, updateClient, deleteClient };

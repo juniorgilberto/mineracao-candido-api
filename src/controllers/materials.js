@@ -1,5 +1,5 @@
 // controllers/materials.js
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
@@ -112,7 +112,7 @@ async function deleteMaterial(req, res) {
   }
 }
 
-module.exports = {
+export default { 
   listMaterials,
   getMaterial,
   createMaterial,

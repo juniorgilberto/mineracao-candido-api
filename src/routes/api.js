@@ -1,12 +1,11 @@
 // routes/api.js
-const express = require('express');
-const router = express.Router();
+import express from "express";
+import clients from '../controllers/clients.js';
+import materials from '../controllers/materials.js';
+import vehicles from '../controllers/vehicles.js';
+import orders from '../controllers/orders.js';
 
-const clients = require('../controllers/clients');
-const materials = require('../controllers/materials');
-const vehicles = require('../controllers/vehicles');
-const orders = require('../controllers/orders');
-const prices = require('../controllers/prices');
+const router = express.Router();
 
 // clients
 router.get('/clients', clients.listClients);
@@ -30,10 +29,6 @@ router.post('/vehicles', vehicles.createVehicle);
 router.put('/vehicles/:id', vehicles.updateVehicle);
 router.delete('/vehicles/:id', vehicles.deleteVehicle);
 
-// prices (alias to materials list/update)
-router.get('/prices', prices.listPrices);
-router.put('/prices/:id', prices.updatePrice);
-
 // orders
 router.get('/orders', orders.listOrders);
 router.get('/orders/:id', orders.getOrder);
@@ -41,4 +36,4 @@ router.post('/orders', orders.createOrder);
 router.put('/orders/:id', orders.updateOrder);
 router.delete('/orders/:id', orders.deleteOrder);
 
-module.exports = router;
+export default router;

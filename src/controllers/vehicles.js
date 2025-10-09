@@ -1,5 +1,5 @@
 // controllers/vehicles.js
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function listVehicles(req, res) {
@@ -66,4 +66,4 @@ async function deleteVehicle(req, res) {
   } catch (err) { console.error(err); res.status(500).json({ error: 'server' }); }
 }
 
-module.exports = { listVehicles, getVehicle, createVehicle, updateVehicle, deleteVehicle };
+export default { listVehicles, getVehicle, createVehicle, updateVehicle, deleteVehicle };
