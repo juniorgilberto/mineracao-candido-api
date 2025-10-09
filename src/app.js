@@ -2,7 +2,7 @@
 //cors, middlewars.. etc;
 import express from "express";
 import cors from 'cors'
-import index from "./Routes/index.js";
+import api from "./routes/api";
 
 const app = express();
 
@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(cors());
 
 //Rotas
-app.use('/', index);
+app.use('/api', api);
 
 export { app };
 

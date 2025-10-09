@@ -8,42 +8,72 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
-model Cliente {
-  id       Int      @id @default(autoincrement())
-  nome     String
-  cpfCnpj  String
-  ie       String?
-  telefone String?
-  email    String?
-  endereco String?
-  pedidos  Pedido[]
+enum ClientType {
+  PF
+  PJ
 }
 
-model Produto {
-  id      Int      @id @default(autoincrement())
-  nome    String
-  valor   Float
-  pedidos Pedido[]
+model Client {
+  id          String    @id @default(cuid())
+  type        ClientType
+  // -- Campos pessoa física
+  name        String?                        // nome (PF) ou nome de contato (PJ)
+  cpf         String?   @unique              // pode ser null; se informado será único
+  // -- Campos pessoa jurídica
+  razaoSocial String?                        // razão social (PJ)
+  cnpj        String?   @unique              // pode ser null; se informado será único
+  ie          String?
+  // -- Campos comuns
+  address     String?
+  phone       String?
+  email       String?
+  createdAt   DateTime  @default(now())
+
+  // relations
+  vehicles    Vehicle[] 
+  orders      Order[]   @relation("ClientOrders")
+
+  @@index([name])
 }
 
-model Usuario {
-  id       Int     @id @default(autoincrement())
-  nome     String
-  tipo     String
-  telefone String?
-  senha    String
-  email    String  @unique
+model Material {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  pricePerM3  Decimal  @db.Decimal(12,2)     // preço corrente por m³
+  createdAt   DateTime @default(now())
+
+  orders      Order[]
+
+  @@index([name])
 }
 
-model Pedido {
-  id        Int      @id @default(autoincrement())
-  clienteId Int
-  produtoId Int
-  data      DateTime
-  viagens   Int
-  status    String
-  veiculo   String?
-  metragem  Float
-  cliente   Cliente  @relation(fields: [clienteId], references: [id])
-  produto   Produto  @relation(fields: [produtoId], references: [id])
+model Vehicle {
+  id         String   @id @default(cuid())
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId   String
+  plate      String
+  metragem   Decimal  @db.Decimal(10,3)      // capacidade/metragem do veículo (m³)
+  createdAt  DateTime @default(now())
+
+  @@index([clientId])
+  @@unique([plate, clientId])                // placa única por cliente; ajuste se desejar globalmente única
+}
+
+model Order {
+  id               Int      @id @default(autoincrement())
+  client           Client?  @relation("ClientOrders", fields: [clientId], references: [id])
+  clientId         String?
+  clientName       String?                        // nome do cliente no momento do pedido (denormalizado)
+  material         Material @relation(fields: [materialId], references: [id])
+  materialId       Int
+  materialPrice    Decimal  @db.Decimal(12,2)     // preço por m³ aplicado neste pedido (congelado)
+  vehicleMetragem  Decimal  @db.Decimal(10,3)     // metragem usada neste pedido (copiado do veículo ou informado)
+  vehiclePlate     String                           // placa do veículo que realizou a viagem (string simples)
+  totalValue       Decimal  @db.Decimal(14,2)     // materialPrice * vehicleMetragem (calculado antes de salvar)
+  datetime         DateTime @default(now())       // data/hora da viagem
+  createdAt        DateTime @default(now())
+
+  @@index([datetime])
+  @@index([clientId])
+  @@index([materialId])
 }
