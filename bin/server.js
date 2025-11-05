@@ -14,6 +14,10 @@ function normalizaPort(val) {
     return false;
 }
 
+app.get('/', (req, res) => {
+  res.send('Welcome to the REST API of Mineração Candido!');
+});
+
 app.listen(port, function () {
     console.log(`app listening on port ${port}`)
 })
