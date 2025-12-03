@@ -9,71 +9,116 @@ datasource db {
 }
 
 enum ClientType {
-  PF
-  PJ
+  PESSOA_FISICA
+  PESSOA_JURIDICA
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum OrderStatus {
+  PENDENTE
+  EM_FECHAMENTO
+  PAGO
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  nome     String
+  role     Role   @default(USER)
+  usuario  String @unique
+  senha    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Client {
-  id          String    @id @default(cuid())
-  type        ClientType
-  // -- Campos pessoa física
-  name        String?                        // nome (PF) ou nome de contato (PJ)
-  cpf         String?   @unique              // pode ser null; se informado será único
-  // -- Campos pessoa jurídica
-  razaoSocial String?                        // razão social (PJ)
-  cnpj        String?   @unique              // pode ser null; se informado será único
-  ie          String?
-  // -- Campos comuns
-  address     String?
-  phone       String?
-  email       String?
-  createdAt   DateTime  @default(now())
+  id                Int       @id @default(autoincrement())
+  type              ClientType
+  nome              String
+  // Campos para pessoa física
+  cpf               String?   @unique
+  // Campos para pessoa jurídica
+  razaoSocial       String?
+  cnpj              String?   @unique
+  inscricaoEstadual String?
 
-  // relations
-  vehicles    Vehicle[] 
-  orders      Order[]   @relation("ClientOrders")
+  endereco String?
+  telefone String?
+  email    String?
+  saldo   Decimal   @default(0) @db.Decimal(14, 2)
 
-  @@index([name])
+  veiculos Veiculo[]
+  pedidos  Pedido[]
+  fechamentos Fechamento[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Material {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  pricePerM3  Decimal  @db.Decimal(12,2)     // preço corrente por m³
-  createdAt   DateTime @default(now())
+model Veiculo {
+  id        Int     @id @default(autoincrement())
+  placa     String  @unique
+  metragem  Float
+  client    Client  @relation(fields: [clientId], references: [id])
+  clientId  Int
 
-  orders      Order[]
+  pedidos   Pedido[]
 
-  @@index([name])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Vehicle {
-  id         String   @id @default(cuid())
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId   String
-  plate      String
-  metragem   Decimal  @db.Decimal(10,3)      // capacidade/metragem do veículo (m³)
-  createdAt  DateTime @default(now())
+model Produto {
+  id       Int     @id @default(autoincrement())
+  nome     String
+  valor_m3 Decimal @db.Decimal(12, 2)
 
-  @@index([clientId])
-  @@unique([plate, clientId])                // placa única por cliente; ajuste se desejar globalmente única
+  pedidos  Pedido[]   // referência opcional (pedidos guardam nome/valor também)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Order {
-  id               Int      @id @default(autoincrement())
-  client           Client?  @relation("ClientOrders", fields: [clientId], references: [id])
-  clientId         String?
-  clientName       String?                        // nome do cliente no momento do pedido (denormalizado)
-  material         Material @relation(fields: [materialId], references: [id])
-  materialId       Int
-  materialPrice    Decimal  @db.Decimal(12,2)     // preço por m³ aplicado neste pedido (congelado)
-  vehicleMetragem  Decimal  @db.Decimal(10,3)     // metragem usada neste pedido (copiado do veículo ou informado)
-  vehiclePlate     String                           // placa do veículo que realizou a viagem (string simples)
-  totalValue       Decimal  @db.Decimal(14,2)     // materialPrice * vehicleMetragem (calculado antes de salvar)
-  datetime         DateTime @default(now())       // data/hora da viagem
-  createdAt        DateTime @default(now())
+model Pedido {
+  id Int @id @default(autoincrement())
 
-  @@index([datetime])
-  @@index([clientId])
-  @@index([materialId])
+  client    Client  @relation(fields: [clientId], references: [id])
+  clientId  Int
+
+  // denormalizado — armazena nome e valor do produto no pedido
+  produtoId    Int?      // opcional: referência ao produto cadastrado
+  produto      Produto?  @relation(fields: [produtoId], references: [id])
+  produto_valor Decimal   @db.Decimal(12, 2)
+
+  // veículo (referência + campos denormalizados)
+  veiculoId       Int?     // opcional caso não haja veículo
+  veiculo         Veiculo? @relation(fields: [veiculoId], references: [id])
+
+  metragem      Float
+  valor_total   Decimal   @db.Decimal(12, 2)
+  data_do_pedido DateTime @default(now())
+  status        OrderStatus @default(PENDENTE)
+
+  fechamento   Fechamento? @relation(fields: [fechamentoId], references: [id])
+  fechamentoId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Fechamento {
+  id        Int      @id @default(autoincrement())
+  clientId Int?
+  client   Client?   @relation(fields: [clientId], references: [id])
+  data      DateTime @default(now())
+  total     Decimal  @db.Decimal(14, 2)
+  descricao String?
+
+  pedidos   Pedido[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

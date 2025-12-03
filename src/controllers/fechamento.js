@@ -1,0 +1,114 @@
+// controllers/produtos.js
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+/**
+ * GET /api/materials
+ * optional: ?search=texto
+ */
+async function listFechamentos(req, res) {
+  try {
+    const { search } = req.query;
+    
+    const where = search ? { nome: { contains: search, mode: 'insensitive' } } : {};    
+    const rows = await prisma.fechamento.findMany({ 
+        where,
+        include: { pedidos: true } 
+    } );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server' });
+  }
+}
+
+/**
+ * GET /api/materials/:id
+ */
+async function getFechamento(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const fechamento = await prisma.fechamento.findUnique({ where: { id }, include: {pedidos: true} });
+    if (!fechamento) return res.status(404).json({ error: 'fechamento não encontrado.' });
+    res.json(fechamento);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server' });
+  }
+}
+
+/**
+ */
+async function createFechamento(req, res) {
+  try {
+    const { clienteId, descricao, pedidosIds } = req.body;
+
+    const pedidos = await prisma.pedido.findMany({
+        where: { id: {in: req.body.pedidosIds } },
+        select: { id: true, valor_total: true }
+    });
+         
+    const total = pedidos.reduce((sum, p) => sum + Number(p.valor_total), 0);    
+
+    const fechamento = await prisma.fechamento.create({
+        data: {
+            descricao, 
+            total,
+            pedidos: {
+                connect: pedidos.map(p => ({ id: p.id }))
+            }
+        } 
+        
+    });
+    res.status(201).json(fechamento);
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'P2002') return res.status(400).json({ error: 'fechamento name must be unique', meta: err.meta });
+    res.status(500).json({ error: 'server' });
+  }
+}
+
+async function updateFechamento(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const body = req.body || {};
+    const existing = await prisma.fechamento.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'fechamento not found' });
+
+    const updated = await prisma.fechamento.update({
+      where: { id },
+      data: {
+        nome: body.nome !== undefined ? String(body.nome).trim() : existing.nome,
+        valor_m3: body.valor_m3 !== undefined ? Number(body.valor_m3) : existing.valor_m3
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'P2002') return res.status(400).json({ error: 'fechamento name must be unique', meta: err.meta });
+    res.status(500).json({ error: 'server' });
+  }
+}
+
+
+/**
+ * DELETE /api/fechamentos/:id
+ */
+async function deleteFechamento(req, res) {
+  try {
+    const id = Number(req.params.id);
+    await prisma.fechamento.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server' });
+  }
+}
+
+export default { 
+    listFechamentos,
+    getFechamento,
+    createFechamento,
+    updateFechamento,
+    deleteFechamento
+};
