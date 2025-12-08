@@ -11,10 +11,10 @@ async function listPedidos(req, res) {
   try {
     const { from, to, searchCliente, searchPlaca, searchProduto } = req.query;
     const where = {};
-    if (from) where.datetime = { gte: new Date(from + "T00:00:00Z") };
+    if (from) where.data_do_pedido = { gte: new Date(from + "T00:00:00") };
     if (to)
-      where.datetime = Object.assign(where.datetime || {}, {
-        lte: new Date(to + "T23:59:59Z"),
+      where.data_do_pedido = Object.assign(where.data_do_pedido || {}, {
+        lte: new Date(to + "T23:59:59"),
       });
 
     if (searchCliente) {
