@@ -43,7 +43,6 @@ async function listPedidos(req, res) {
         },
       };
     }
-    console.log(where);
     
 
     // Because of relations and possible material name filter, fallback to simple SQL via prisma.findMany with basic filters:
@@ -90,9 +89,6 @@ async function createPedido(req, res) {
         const body = req.body;
         if (!body.produtoId)
           return res.status(400).json({ error: "É necessárioID do produto" });
-        console.log("Este é o ID do cliente: ", body.clientId);
-        console.log("Este é o ID do veiculo: ", body.veiculoId);
-        console.log("Este é o ID do produto: ", body.produtoId);
 
         // fetch material
         let produto;
@@ -106,15 +102,12 @@ async function createPedido(req, res) {
           });
         if (!produto)
           return res.status(404).json({ error: "Produto não encontrado" });
-        console.log(produto.nome);
 
         // determine price
         const produtoValor =
           body.produto_valor !== undefined
             ? Number(body.produto_valor)
             : Number(produto.valor_m3 || 0);
-
-        console.log("Este é o valor do produto: ", produtoValor);
 
         // vehicle data
         let veiculoMetragem =
@@ -130,8 +123,6 @@ async function createPedido(req, res) {
         }
         if (veiculoMetragem === null)
           veiculoMetragem = Number(body.metragem || 0);
-
-        console.log("Este é o valor da metragem: ", veiculoMetragem);
 
         const valorTotal =
           Number(veiculoMetragem || 0) * Number(produtoValor || 0);

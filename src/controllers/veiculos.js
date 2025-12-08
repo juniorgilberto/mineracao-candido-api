@@ -6,11 +6,12 @@ async function listVeiculos(req, res) {
   try {
     const { clientId, plate, search } = req.query;
     const where = {};
-    if (clientId) where.clientId = clientId;
+    if (clientId) where.clientId = Number(clientId);
     if (plate) where.plate = { equals: plate.toUpperCase() };
     if (search) where.OR = [{ plate: { contains: search, mode: 'insensitive' } }];
     const rows = await prisma.veiculo.findMany({ where, orderBy: { createdAt: 'desc' } });
     res.json(rows);
+    console.log('clientId recebido:', req.query.clientId)
   } catch (err) { console.error(err); res.status(500).json({ error: 'server' }); }
 }
 

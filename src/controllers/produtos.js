@@ -10,9 +10,7 @@ async function listProdutos(req, res) {
   try {
     const { search } = req.query;
     
-    const where = search ? { nome: { contains: search, mode: 'insensitive' } } : {};
-    console.log(where);
-    
+    const where = search ? { nome: { contains: search, mode: 'insensitive' } } : {};    
     const rows = await prisma.produto.findMany({ where, orderBy: { nome: 'asc' } });
     res.json(rows);
   } catch (err) {
