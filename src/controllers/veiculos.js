@@ -11,7 +11,6 @@ async function listVeiculos(req, res) {
     if (search) where.OR = [{ plate: { contains: search, mode: 'insensitive' } }];
     const rows = await prisma.veiculo.findMany({ where, orderBy: { createdAt: 'desc' } });
     res.json(rows);
-    console.log('clientId recebido:', req.query.clientId)
   } catch (err) { console.error(err); res.status(500).json({ error: 'server' }); }
 }
 
