@@ -33,6 +33,7 @@ router.delete('/veiculos/:id', veiculos.deleteVeiculo);
 
 // orders
 router.get('/pedidos', pedidos.listPedidos);
+router.get('/pedidos/agrupados', pedidos.listPedidosAgrupados);
 router.get('/pedidos/:id', pedidos.getPedido);
 router.post('/pedidos', pedidos.createPedido);
 router.put('/pedidos/:id', pedidos.updatePedido);

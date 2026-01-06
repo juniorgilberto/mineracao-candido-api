@@ -10,6 +10,9 @@ app.use(express.json());
 app.use(cors());
 
 //Rotas
+BigInt.prototype.toJSON = function () {
+  return Number(this)
+}
 app.use('/', api);
 
 export { app };

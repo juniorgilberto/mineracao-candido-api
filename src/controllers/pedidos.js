@@ -43,7 +43,6 @@ async function listPedidos(req, res) {
         },
       };
     }
-    
 
     // Because of relations and possible material name filter, fallback to simple SQL via prisma.findMany with basic filters:
     const pedidos = await prisma.pedido.findMany({
@@ -51,6 +50,80 @@ async function listPedidos(req, res) {
       include: { veiculo: true, client: true, produto: true },
     });
     res.json(pedidos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "server" });
+  }
+}
+
+async function listPedidosAgrupados(req, res) {
+
+  try {
+    const { from, to, searchCliente, searchPlaca, searchProduto } = req.query;
+    const where = {};
+    if (from) where.data_do_pedido = { gte: new Date(from + "T00:00:00") };
+    if (to)
+      where.data_do_pedido = Object.assign(where.data_do_pedido || {}, {
+        lte: new Date(to + "T23:59:59"),
+      });
+
+    if (searchCliente) {
+      where.client = {
+        nome: {
+          contains: searchCliente,
+          mode: "insensitive",
+        },
+      };
+    }
+
+    if (searchPlaca) {
+      where.veiculo = {
+        placa: {
+          contains: searchPlaca,
+          mode: "insensitive",
+        },
+      };
+    }
+
+    if (searchProduto) {
+      where.produto = {
+        nome: {
+          contains: searchProduto,
+          mode: "insensitive",
+        },
+      };
+    }
+    const pedidos = await prisma.pedido.findMany({
+      where,
+      include: { veiculo: true, client: true, produto: true },
+    });
+
+    const clientes = {};
+
+    pedidos.forEach((pedido) => {
+      const placa = pedido.veiculo?.placa || "SEM PLACA"
+      if (!clientes[pedido.clientId]) {
+        clientes[pedido.clientId] = {
+          nome: pedido.client.nome,
+          veiculos: {},
+        };
+      }
+
+      const chave = `${placa}-${pedido.produto.nome}-${Number(
+        pedido.metragem
+      )}`;
+      if (!clientes[pedido.clientId].veiculos[chave]) {
+      clientes[pedido.clientId].veiculos[chave] = {
+        placa: placa,
+        produto: pedido.produto.nome,
+        metragem: Number(pedido.metragem),
+        viagens: 0,
+      };
+      }
+      clientes[pedido.clientId].veiculos[chave].viagens++
+    });
+
+    res.json(Object.values(clientes));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server" });
@@ -135,7 +208,7 @@ async function createPedido(req, res) {
             metragem: veiculoMetragem,
             veiculoId: body.veiculoId || null,
             valor_total: valorTotal,
-            status: body.status
+            status: body.status,
           },
         });
         return res.status(201).json(created);
@@ -164,7 +237,8 @@ async function updatePedido(req, res) {
 
     const result = await prisma.$transaction(async (tx) => {
       const existing = await tx.pedido.findUnique({ where: { id } });
-      if (!existing) return res.status(404).json({ error: "Pedido não encontrado" });
+      if (!existing)
+        return res.status(404).json({ error: "Pedido não encontrado" });
 
       const fechamentoAntigo = existing.fechamentoId;
       // produto
@@ -174,7 +248,8 @@ async function updatePedido(req, res) {
         const produto = await tx.produto.findUnique({
           where: { id: body.produtoId },
         });
-        if (!produto) return res.status(404).json({ error: "Produto não encontrado" });
+        if (!produto)
+          return res.status(404).json({ error: "Produto não encontrado" });
         if (body.produto_valor === undefined)
           produtoValor = Number(produto.valor_m3 || 0);
       }
@@ -189,13 +264,13 @@ async function updatePedido(req, res) {
         const veiculo = await tx.veiculo.findUnique({
           where: { id: body.veiculoId },
         });
-        if (!veiculo) return res.status(404).json({ error: "Veículo não encontrado" });
+        if (!veiculo)
+          return res.status(404).json({ error: "Veículo não encontrado" });
         if (body.metragem === undefined)
           metragem = Number(veiculo.metragem || 0);
       }
 
-      if (body.metragem !== undefined)
-        metragem = Number(body.metragem || 0);
+      if (body.metragem !== undefined) metragem = Number(body.metragem || 0);
 
       const valorTotal = Number(metragem || 0) * Number(produtoValor || 0);
 
@@ -203,18 +278,22 @@ async function updatePedido(req, res) {
       const updated = await tx.pedido.update({
         where: { id },
         data: {
-          clientId: body.clientId !== undefined ? body.clientId : existing.clientId,
-          produtoId: body.produtoId !== undefined ? body.produtoId : existing.produtoId,
+          clientId:
+            body.clientId !== undefined ? body.clientId : existing.clientId,
+          produtoId:
+            body.produtoId !== undefined ? body.produtoId : existing.produtoId,
           produto_valor: produtoValor,
-          veiculoId: body.veiculoId !== undefined ? body.veiculoId : existing.veiculoId,
+          veiculoId:
+            body.veiculoId !== undefined ? body.veiculoId : existing.veiculoId,
           metragem: metragem,
           valor_total: valorTotal,
           fechamentoId:
-            body.fechamentoId !== undefined ? body.fechamentoId : existing.fechamentoId,
+            body.fechamentoId !== undefined
+              ? body.fechamentoId
+              : existing.fechamentoId,
           status: body.status !== undefined ? body.status : existing.status,
         },
       });
-
 
       const fechamentoNovo = updated.fechamentoId;
 
@@ -238,14 +317,13 @@ async function updatePedido(req, res) {
         const sumNew = await tx.pedido.aggregate({
           where: { fechamentoId: fechamentoNovo },
           _sum: { valor_total: true },
-        })
+        });
         const totalNew = Number(sumNew._sum.valor_total || 0);
         await tx.fechamento.update({
           where: { id: fechamentoNovo },
           data: { total: totalNew },
         });
       }
-
 
       return updated;
     });
@@ -274,4 +352,5 @@ export default {
   createPedido,
   updatePedido,
   deletePedido,
+  listPedidosAgrupados,
 };
