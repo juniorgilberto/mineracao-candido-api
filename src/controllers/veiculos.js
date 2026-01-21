@@ -61,7 +61,7 @@ async function updateVeiculo(req, res) {
 
 async function deleteVeiculo(req, res) {
   try {
-    const id = req.params.id;
+    const id = Number(req.params.id);
     await prisma.veiculo.delete({ where: { id } });
     res.json({ success: true });
   } catch (err) { console.error(err); res.status(500).json({ error: 'server' }); }
