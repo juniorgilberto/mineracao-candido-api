@@ -105,22 +105,27 @@ async function listPedidosAgrupados(req, res) {
       if (!clientes[pedido.clientId]) {
         clientes[pedido.clientId] = {
           nome: pedido.client.nome,
-          veiculos: {},
+          clienteId: pedido.clientId,
+
+          detalhes: {},
         };
       }
 
-      const chave = `${placa}-${pedido.produto.nome}-${Number(
+      const chave = `${placa}-${pedido.produto.id}-${Number(
         pedido.metragem
-      )}`;
-      if (!clientes[pedido.clientId].veiculos[chave]) {
-      clientes[pedido.clientId].veiculos[chave] = {
-        placa: placa,
-        produto: pedido.produto.nome,
-        metragem: Number(pedido.metragem),
-        viagens: 0,
-      };
+      )}-${pedido.produto_valor}`;
+      if (!clientes[pedido.clientId].detalhes[chave]) {
+        clientes[pedido.clientId].detalhes[chave] = {
+          produtoId: pedido.produtoId,
+          veiculoId: pedido.veiculoId,
+          placa: placa,
+          produto: pedido.produto.nome,
+          produtoValor: Number(pedido.produto_valor),
+          metragem: Number(pedido.metragem),
+          viagens: 0,
+        };
       }
-      clientes[pedido.clientId].veiculos[chave].viagens++
+      clientes[pedido.clientId].detalhes[chave].viagens++
     });
 
     res.json(Object.values(clientes));
