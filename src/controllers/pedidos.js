@@ -57,7 +57,6 @@ async function listPedidos(req, res) {
 }
 
 async function listPedidosAgrupados(req, res) {
-
   try {
     const { from, to, searchCliente, searchPlaca, searchProduto } = req.query;
     const where = {};
@@ -101,7 +100,7 @@ async function listPedidosAgrupados(req, res) {
     const clientes = {};
 
     pedidos.forEach((pedido) => {
-      const placa = pedido.veiculo?.placa || "SEM PLACA"
+      const placa = pedido.veiculo?.placa || "SEM PLACA";
       if (!clientes[pedido.clientId]) {
         clientes[pedido.clientId] = {
           nome: pedido.client.nome,
@@ -112,7 +111,7 @@ async function listPedidosAgrupados(req, res) {
       }
 
       const chave = `${placa}-${pedido.produto.id}-${Number(
-        pedido.metragem
+        pedido.metragem,
       )}-${pedido.produto_valor}`;
       if (!clientes[pedido.clientId].detalhes[chave]) {
         clientes[pedido.clientId].detalhes[chave] = {
@@ -125,7 +124,7 @@ async function listPedidosAgrupados(req, res) {
           viagens: 0,
         };
       }
-      clientes[pedido.clientId].detalhes[chave].viagens++
+      clientes[pedido.clientId].detalhes[chave].viagens++;
     });
 
     res.json(Object.values(clientes));
@@ -153,13 +152,6 @@ async function getPedido(req, res) {
   }
 }
 
-/**
- * POST /api/pedidos
- * body: { clientId, clientName, vehicleId?, vehiclePlate?, materialId, materialPrice? , vehicleMetragem? , datetime? }
- * - if vehicleId provided, prefer its plate and metragem as defaults (but allow override)
- * - if materialPrice not provided, use material.pricePerM3
- * - totalValue = vehicleMetragem * materialPrice
- */
 async function createPedido(req, res) {
   const t = await prisma
     .$transaction(async (prismaTx) => {
@@ -215,6 +207,11 @@ async function createPedido(req, res) {
             valor_total: valorTotal,
             status: body.status,
           },
+        });
+
+        io.emit("pedido_atualizado", {
+          mensagem: "Um novo pedido foi criado!",
+          data: new Date(),
         });
         return res.status(201).json(created);
       } catch (err) {
