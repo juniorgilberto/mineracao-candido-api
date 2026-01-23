@@ -208,11 +208,6 @@ async function createPedido(req, res) {
             status: body.status,
           },
         });
-
-        io.emit("pedido_atualizado", {
-          mensagem: "Um novo pedido foi criado!",
-          data: new Date(),
-        });
         return res.status(201).json(created);
       } catch (err) {
         console.error(err);
