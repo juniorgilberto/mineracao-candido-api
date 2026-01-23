@@ -24,6 +24,11 @@ enum OrderStatus {
   PAGO
 }
 
+enum FechamentoStatus {
+  PENDENTE
+  PAGO
+}
+
 model User {
   id       Int    @id @default(autoincrement())
   nome     String
@@ -116,6 +121,7 @@ model Fechamento {
   data      DateTime @default(now())
   total     Decimal  @db.Decimal(14, 2)
   descricao String?
+  status   FechamentoStatus @default(PENDENTE)
 
   pedidos   Pedido[]
 

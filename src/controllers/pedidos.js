@@ -234,92 +234,50 @@ async function updatePedido(req, res) {
 
     const result = await prisma.$transaction(async (tx) => {
       const existing = await tx.pedido.findUnique({ where: { id } });
-      if (!existing)
-        return res.status(404).json({ error: "Pedido não encontrado" });
+      if (!existing) throw new Error("NOT_FOUND"); // Usar throw dentro da tx é mais limpo
 
-      const fechamentoAntigo = existing.fechamentoId;
-      // produto
-      let produtoValor = existing.produto_valor;
-
-      if (body.produtoId) {
-        const produto = await tx.produto.findUnique({
-          where: { id: body.produtoId },
-        });
-        if (!produto)
-          return res.status(404).json({ error: "Produto não encontrado" });
-        if (body.produto_valor === undefined)
-          produtoValor = Number(produto.valor_m3 || 0);
+      // 1. Lógica de cálculo de Preço e Metragem (Mantida a sua lógica original)
+      let produtoValor = body.produto_valor !== undefined ? Number(body.produto_valor) : existing.produto_valor;
+      if (body.produtoId && body.produto_valor === undefined) {
+        const produto = await tx.produto.findUnique({ where: { id: body.produtoId } });
+        if (produto) produtoValor = Number(produto.valor_m3 || 0);
       }
 
-      if (body.produto_valor !== undefined)
-        produtoValor = Number(body.produto_valor || 0);
-
-      // metragem
-      let metragem = Number(existing.metragem || 0);
-
-      if (body.veiculoId) {
-        const veiculo = await tx.veiculo.findUnique({
-          where: { id: body.veiculoId },
-        });
-        if (!veiculo)
-          return res.status(404).json({ error: "Veículo não encontrado" });
-        if (body.metragem === undefined)
-          metragem = Number(veiculo.metragem || 0);
+      let metragem = body.metragem !== undefined ? Number(body.metragem) : Number(existing.metragem || 0);
+      if (body.veiculoId && body.metragem === undefined) {
+        const veiculo = await tx.veiculo.findUnique({ where: { id: body.veiculoId } });
+        if (veiculo) metragem = Number(veiculo.metragem || 0);
       }
 
-      if (body.metragem !== undefined) metragem = Number(body.metragem || 0);
+      const valorTotal = metragem * produtoValor;
 
-      const valorTotal = Number(metragem || 0) * Number(produtoValor || 0);
-
-      // update pedido
+      // 2. Update do pedido
       const updated = await tx.pedido.update({
         where: { id },
         data: {
-          clientId:
-            body.clientId !== undefined ? body.clientId : existing.clientId,
-          produtoId:
-            body.produtoId !== undefined ? body.produtoId : existing.produtoId,
+          clientId: body.clientId ?? existing.clientId,
+          produtoId: body.produtoId ?? existing.produtoId,
           produto_valor: produtoValor,
-          veiculoId:
-            body.veiculoId !== undefined ? body.veiculoId : existing.veiculoId,
+          veiculoId: body.veiculoId ?? existing.veiculoId,
           metragem: metragem,
           valor_total: valorTotal,
-          fechamentoId:
-            body.fechamentoId !== undefined
-              ? body.fechamentoId
-              : existing.fechamentoId,
-          status: body.status !== undefined ? body.status : existing.status,
+          fechamentoId: body.fechamentoId !== undefined ? body.fechamentoId : existing.fechamentoId,
+          status: body.status ?? existing.status,
         },
       });
 
+      // 3. LÓGICA DE RECALCULO DE FECHAMENTO (Otimizada)
+      const fechamentoAntigo = existing.fechamentoId;
       const fechamentoNovo = updated.fechamentoId;
 
+      // Se mudou de fechamento, atualiza o antigo
       if (fechamentoAntigo && fechamentoAntigo !== fechamentoNovo) {
-        // recalcula fechamento antigo
-        const sumOld = await tx.pedido.aggregate({
-          where: { fechamentoId: fechamentoAntigo },
-          _sum: { valor_total: true },
-        });
-
-        const totalOld = Number(sumOld._sum.valor_total || 0);
-
-        await tx.fechamento.update({
-          where: { id: fechamentoAntigo },
-          data: { total: totalOld },
-        });
+        await atualizarTotalFechamento(tx, fechamentoAntigo);
       }
 
+      // Se está em um fechamento (novo ou o mesmo), atualiza o total
       if (fechamentoNovo) {
-        // recalcula fechamento novo
-        const sumNew = await tx.pedido.aggregate({
-          where: { fechamentoId: fechamentoNovo },
-          _sum: { valor_total: true },
-        });
-        const totalNew = Number(sumNew._sum.valor_total || 0);
-        await tx.fechamento.update({
-          where: { id: fechamentoNovo },
-          data: { total: totalNew },
-        });
+        await atualizarTotalFechamento(tx, fechamentoNovo);
       }
 
       return updated;
@@ -327,9 +285,22 @@ async function updatePedido(req, res) {
 
     res.json(result);
   } catch (err) {
+    if (err.message === "NOT_FOUND") return res.status(404).json({ error: "Pedido não encontrado" });
     console.error(err);
     res.status(500).json({ error: "server" });
   }
+}
+
+async function atualizarTotalFechamento(tx, fechamentoId) {
+  const aggregate = await tx.pedido.aggregate({
+    where: { fechamentoId: fechamentoId },
+    _sum: { valor_total: true },
+  });
+
+  await tx.fechamento.update({
+    where: { id: fechamentoId },
+    data: { total: Number(aggregate._sum.valor_total || 0) },
+  });
 }
 
 async function deletePedido(req, res) {
