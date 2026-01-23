@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
   res.send('Welcome to the REST API of Mineração Candido!');
 });
 
-server.listen(port, function () {
+app.listen(port, function () {
     console.log(`app listening on port ${port}`)
 })
 
