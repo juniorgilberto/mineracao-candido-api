@@ -53,5 +53,6 @@ router.get('/fechamentos/:id', fechamento.getFechamento);
 router.post('/fechamentos', auth, fechamento.createFechamento);
 router.put('/fechamentos/:id', auth, fechamento.updateFechamento);
 router.delete('/fechamentos/:id', auth, fechamento.deleteFechamento);
+router.put('/fechamentos/:id/finalizar', auth, fechamento.finalizarFechamento);
 
 export default router;

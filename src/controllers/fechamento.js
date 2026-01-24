@@ -15,7 +15,13 @@ async function listFechamentos(req, res) {
       : {};
     const rows = await prisma.fechamento.findMany({
       where,
-      include: { client: true, pedidos: { include: { produto: true } } },
+      include: {
+        client: true,
+        pedidos: { include: { produto: true, veiculo: true } },
+      },
+      orderBy: {
+        id: "asc", // ou 'desc' se quiser os mais novos primeiro
+      },
     });
     res.json(rows);
   } catch (err) {
@@ -32,7 +38,10 @@ async function getFechamento(req, res) {
     const id = Number(req.params.id);
     const fechamento = await prisma.fechamento.findUnique({
       where: { id },
-      include: { client: true, pedidos: { include: { produto: true } } },
+      include: {
+        client: true,
+        pedidos: { include: { produto: true, veiculo: true } },
+      },
     });
     if (!fechamento)
       return res.status(404).json({ error: "fechamento não encontrado." });
@@ -109,12 +118,16 @@ async function updateFechamento(req, res) {
     const updated = await prisma.fechamento.update({
       where: { id },
       data: {
-        nome:
-          body.nome !== undefined ? String(body.nome).trim() : existing.nome,
+        descricao:
+          body.descricao !== undefined
+            ? String(body.descricao).trim()
+            : existing.descricao,
         valor_m3:
           body.valor_m3 !== undefined
             ? Number(body.valor_m3)
             : existing.valor_m3,
+        status:
+          body.status !== undefined ? String(body.status) : existing.status,
       },
     });
     res.json(updated);
@@ -142,10 +155,36 @@ async function deleteFechamento(req, res) {
   }
 }
 
+async function finalizarFechamento(req, res) {
+  const id = Number(req.params.id);
+
+  try {
+    await prisma.$transaction([
+      // 1. Atualiza o status do Fechamento para PAGO
+      prisma.fechamento.update({
+        where: { id },
+        data: { status: "PAGO" },
+      }),
+
+      // 2. Atualiza TODOS os pedidos vinculados a este fechamento para PAGO
+      prisma.pedido.updateMany({
+        where: { fechamentoId: id },
+        data: { status: "PAGO" },
+      }),
+    ]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao finalizar fechamento e pedidos" });
+  }
+}
+
 export default {
   listFechamentos,
   getFechamento,
   createFechamento,
   updateFechamento,
   deleteFechamento,
+  finalizarFechamento,
 };

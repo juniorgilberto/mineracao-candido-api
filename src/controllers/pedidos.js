@@ -306,7 +306,31 @@ async function atualizarTotalFechamento(tx, fechamentoId) {
 async function deletePedido(req, res) {
   try {
     const id = Number(req.params.id);
-    await prisma.pedido.delete({ where: { id } });
+    // 1. Buscar o pedido para saber o valor e o fechamento vinculado
+    const pedido = await prisma.pedido.findUnique({
+      where: { id },
+      select: { valor_total: true, fechamentoId: true }
+    });
+
+    if (!pedido) {
+      return res.status(404).json({ error: "Pedido não encontrado" });
+    }
+
+    // 2. Executar a exclusão e a atualização em uma transação
+    await prisma.$transaction([
+      // Deletar o pedido
+      prisma.pedido.delete({ where: { id } }),
+
+      // Atualizar o fechamento subtraindo o valor do pedido deletado
+      prisma.fechamento.update({
+        where: { id: pedido.fechamentoId },
+        data: {
+          total: {
+            decrement: pedido.valor_total // Subtrai o valor automaticamente
+          }
+        }
+      })
+    ]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
