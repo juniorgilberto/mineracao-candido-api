@@ -321,20 +321,24 @@ async function deletePedido(req, res) {
     }
 
     // 2. Executar a exclusão e a atualização em uma transação
-    await prisma.$transaction([
-      // Deletar o pedido
-      prisma.pedido.delete({ where: { id } }),
+    const operations = [
+  prisma.pedido.delete({ where: { id } })
+];
 
-      // Atualizar o fechamento subtraindo o valor do pedido deletado
-      prisma.fechamento.update({
-        where: { id: pedido.fechamentoId },
-        data: {
-          total: {
-            decrement: pedido.valor_total // Subtrai o valor automaticamente
-          }
+if (pedido.fechamentoId) {
+  operations.push(
+    prisma.fechamento.update({
+      where: { id: pedido.fechamentoId },
+      data: {
+        total: {
+          decrement: pedido.valor_total
         }
-      })
-    ]);
+      }
+    })
+  );
+}
+
+await prisma.$transaction(operations);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
