@@ -306,6 +306,10 @@ async function atualizarTotalFechamento(tx, fechamentoId) {
 async function deletePedido(req, res) {
   try {
     const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'ID inválido', recebido:      req.params.id });
+    }
     // 1. Buscar o pedido para saber o valor e o fechamento vinculado
     const pedido = await prisma.pedido.findUnique({
       where: { id },
