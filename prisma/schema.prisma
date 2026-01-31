@@ -68,7 +68,7 @@ model Veiculo {
   id        Int     @id @default(autoincrement())
   placa     String  @unique
   metragem  Float
-  client    Client  @relation(fields: [clientId], references: [id])
+  client    Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId  Int
 
   pedidos   Pedido[]
@@ -90,8 +90,8 @@ model Produto {
 model Pedido {
   id Int @id @default(autoincrement())
 
-  client    Client  @relation(fields: [clientId], references: [id])
-  clientId  Int
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId  Int?
 
   // denormalizado — armazena nome e valor do produto no pedido
   produtoId    Int?      // opcional: referência ao produto cadastrado
