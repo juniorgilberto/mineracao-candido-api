@@ -9,13 +9,24 @@ const prisma = new PrismaClient();
  */
 async function listPedidos(req, res) {
   try {
-    const { from, to, searchCliente, searchPlaca, searchProduto } = req.query;
+    const {
+      from,
+      to,
+      searchCliente,
+      searchPlaca,
+      searchProduto,
+      searchMetragem,
+      searchStatus,
+    } = req.query;
     const where = {};
-    if (from) where.data_do_pedido = { gte: new Date(from + "T00:00:00") };
-    if (to)
-      where.data_do_pedido = Object.assign(where.data_do_pedido || {}, {
-        lte: new Date(to + "T23:59:59"),
-      });
+    const offset = "-04:00"; // Fuso de Cuiabá
+
+    if (from && to) {
+      where.createdAt = {
+        gte: new Date(`${from}T00:00:00.000${offset}`), // Início do dia em Cuiabá
+        lte: new Date(`${to}T23:59:59.999${offset}`), // Fim do dia em Cuiabá
+      };
+    }
 
     if (searchCliente) {
       where.client = {
@@ -25,14 +36,36 @@ async function listPedidos(req, res) {
         },
       };
     }
+    if (searchMetragem) {
+      // Converte a string da URL para número antes de enviar ao Prisma
+      const metragemNum = parseFloat(searchMetragem);
+
+      if (!isNaN(metragemNum)) {
+        where.metragem = metragemNum;
+        // Nota: Campos numéricos não aceitam 'contains' ou 'mode: insensitive'
+      }
+    }
 
     if (searchPlaca) {
-      where.veiculo = {
-        placa: {
-          contains: searchPlaca,
-          mode: "insensitive",
-        },
-      };
+      const busca = searchPlaca.toLowerCase();
+
+      if (busca.includes("sem") || busca.includes("placa")) {
+        where.OR = [
+          {
+            veiculo: {
+              placa: { contains: searchPlaca, mode: "insensitive" },
+            },
+          },
+          {
+            veiculoId: null, // Isso traz os pedidos onde não há veículo vinculado
+          },
+        ];
+      } else {
+        // Busca normal apenas na tabela de veículos
+        where.veiculo = {
+          placa: { contains: searchPlaca, mode: "insensitive" },
+        };
+      }
     }
 
     if (searchProduto) {
@@ -41,6 +74,12 @@ async function listPedidos(req, res) {
           contains: searchProduto,
           mode: "insensitive",
         },
+      };
+    }
+    if (searchStatus) {
+      where.status = {
+        contains: searchStatus,
+        mode: "insensitive",
       };
     }
 
@@ -237,15 +276,25 @@ async function updatePedido(req, res) {
       if (!existing) throw new Error("NOT_FOUND"); // Usar throw dentro da tx é mais limpo
 
       // 1. Lógica de cálculo de Preço e Metragem (Mantida a sua lógica original)
-      let produtoValor = body.produto_valor !== undefined ? Number(body.produto_valor) : existing.produto_valor;
+      let produtoValor =
+        body.produto_valor !== undefined
+          ? Number(body.produto_valor)
+          : existing.produto_valor;
       if (body.produtoId && body.produto_valor === undefined) {
-        const produto = await tx.produto.findUnique({ where: { id: body.produtoId } });
+        const produto = await tx.produto.findUnique({
+          where: { id: body.produtoId },
+        });
         if (produto) produtoValor = Number(produto.valor_m3 || 0);
       }
 
-      let metragem = body.metragem !== undefined ? Number(body.metragem) : Number(existing.metragem || 0);
+      let metragem =
+        body.metragem !== undefined
+          ? Number(body.metragem)
+          : Number(existing.metragem || 0);
       if (body.veiculoId && body.metragem === undefined) {
-        const veiculo = await tx.veiculo.findUnique({ where: { id: body.veiculoId } });
+        const veiculo = await tx.veiculo.findUnique({
+          where: { id: body.veiculoId },
+        });
         if (veiculo) metragem = Number(veiculo.metragem || 0);
       }
 
@@ -261,7 +310,10 @@ async function updatePedido(req, res) {
           veiculoId: body.veiculoId ?? existing.veiculoId,
           metragem: metragem,
           valor_total: valorTotal,
-          fechamentoId: body.fechamentoId !== undefined ? body.fechamentoId : existing.fechamentoId,
+          fechamentoId:
+            body.fechamentoId !== undefined
+              ? body.fechamentoId
+              : existing.fechamentoId,
           status: body.status ?? existing.status,
         },
       });
@@ -285,7 +337,8 @@ async function updatePedido(req, res) {
 
     res.json(result);
   } catch (err) {
-    if (err.message === "NOT_FOUND") return res.status(404).json({ error: "Pedido não encontrado" });
+    if (err.message === "NOT_FOUND")
+      return res.status(404).json({ error: "Pedido não encontrado" });
     console.error(err);
     res.status(500).json({ error: "server" });
   }
@@ -308,12 +361,14 @@ async function deletePedido(req, res) {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id)) {
-      return res.status(400).json({ error: 'ID inválido', recebido:      req.params.id });
+      return res
+        .status(400)
+        .json({ error: "ID inválido", recebido: req.params.id });
     }
     // 1. Buscar o pedido para saber o valor e o fechamento vinculado
     const pedido = await prisma.pedido.findUnique({
       where: { id },
-      select: { valor_total: true, fechamentoId: true }
+      select: { valor_total: true, fechamentoId: true },
     });
 
     if (!pedido) {
@@ -321,24 +376,22 @@ async function deletePedido(req, res) {
     }
 
     // 2. Executar a exclusão e a atualização em uma transação
-    const operations = [
-  prisma.pedido.delete({ where: { id } })
-];
+    const operations = [prisma.pedido.delete({ where: { id } })];
 
-if (pedido.fechamentoId) {
-  operations.push(
-    prisma.fechamento.update({
-      where: { id: pedido.fechamentoId },
-      data: {
-        total: {
-          decrement: pedido.valor_total
-        }
-      }
-    })
-  );
-}
+    if (pedido.fechamentoId) {
+      operations.push(
+        prisma.fechamento.update({
+          where: { id: pedido.fechamentoId },
+          data: {
+            total: {
+              decrement: pedido.valor_total,
+            },
+          },
+        }),
+      );
+    }
 
-await prisma.$transaction(operations);
+    await prisma.$transaction(operations);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
