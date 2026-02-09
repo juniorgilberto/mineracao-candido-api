@@ -77,13 +77,9 @@ async function listPedidos(req, res) {
       };
     }
     if (searchStatus) {
-      where.status = {
-        contains: searchStatus,
-        mode: "insensitive",
-      };
+      where.status = searchStatus
     }
 
-    // Because of relations and possible material name filter, fallback to simple SQL via prisma.findMany with basic filters:
     const pedidos = await prisma.pedido.findMany({
       where,
       include: { veiculo: true, client: true, produto: true },
